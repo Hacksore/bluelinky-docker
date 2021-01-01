@@ -12,11 +12,6 @@ const middleWare = async (req, res, next) => {
   const ip = req.connection.remoteAddress;
   console.log(req.path, ip);
 
-  if (req.body.VALIDATION_KEY !== config.validation_key) {
-    console.log('Bad key used by: ' + ip);
-    return res.send({ error: 'bad key' });
-  }
-
   const client = new BlueLinky({ 
     username: config.username, 
     password: config.password,
@@ -61,7 +56,7 @@ app.post('/lock', async (req, res) => {
   res.send(response);
 });
 
-app.post('/status', async (req, res) => {
+app.get('/', async (req, res) => {
   let response;
   try {
     response = await vehicle.status();
