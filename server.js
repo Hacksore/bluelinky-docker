@@ -6,7 +6,7 @@ const config = require('/config/config.json');
 
 const basic = auth.digest({
     realm: 'Bluelinky',
-    file: __dirname + "/config/users.htpasswd",
+    file: "/config/users.htpasswd",
     algorithm:'md5'
 });
 
