@@ -1,9 +1,17 @@
 const express = require('express');
 const BlueLinky = require('bluelinky');
 const bodyParser = require('body-parser');
+const auth = require('http-auth');
 const config = require('/config/config.json');
 
+const basic = auth.digest({
+    realm: 'Bluelinky',
+    file: __dirname + "/config/users.htpasswd",
+    algorithm:'md5'
+});
+
 const app = express();
+app.use(auth.connect(basic));
 app.use(bodyParser.json());
 
 let vehicle;
