@@ -12,7 +12,7 @@ const digest = auth.digest({
 });
 
 const app = express();
-app.use(authConnect.connect(digest));
+app.use(authConnect(digest));
 app.use(bodyParser.json());
 
 let vehicle;
