@@ -1,4 +1,4 @@
-FROM node:latest-alpine
+FROM node:current-alpine
 WORKDIR /app
 COPY package.json /app
 COPY server.js /app
