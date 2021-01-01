@@ -2,7 +2,7 @@ FROM node:latest
 WORKDIR /app
 COPY package.json /app
 COPY server.js /app
-COPY config.json /app
+COPY config.json.example /app
 
 # RUN npm install
 
