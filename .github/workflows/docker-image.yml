@@ -23,4 +23,4 @@ jobs:
           context: .
           file: ./Dockerfile 
           push: true
-          tags: hacksore/bluelinky-docker:latest
+          tags: hacksore/bluelinky:latest
