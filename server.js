@@ -1,81 +1,104 @@
-const express = require('express');
-const BlueLinky = require('bluelinky');
-const bodyParser = require('body-parser');
-const auth = require('http-auth');
-const authConnect = require("http-auth-connect");
-const config = require('/config/config.json');
+const express = require("express");
+const BlueLinky = require("bluelinky");
+const bodyParser = require("body-parser");
+const basicAuth = require("express-basic-auth");
+const isDocker = require('is-docker');
+// configs
 
-const digest = auth.digest({
-    realm: 'Bluelinky',
-    file: "/config/users.htpasswd",
-    algorithm:'md5'
-});
+const configPath = isDocker() ? "/config" : ".";
+const bluelinkyConfig = require(`${configPath}/config.json`);
+const userCreds = require(`${configPath}/users.json`);
 
 const app = express();
-app.use(authConnect(digest));
+app.use(basicAuth({
+  users: userCreds
+}));
+
 app.use(bodyParser.json());
 
-let vehicle;
+let client;
 
-const middleWare = async (req, res, next) => {
+const middleWare = async (req, _, next) => {
   const ip = req.connection.remoteAddress;
   console.log(req.path, ip);
 
-  const client = new BlueLinky({ 
-    username: config.username, 
-    password: config.password,
-    pin: config.pin,
-    region: config.region
-  });
+  // we already have a client
+  if(client) {
+    console.log("Already have a vehicle defined, moving on");
+    const { vehicleId } = req.body;
 
-  client.on('ready', () => {
-    vehicle = client.getVehicle(config.vin);
+    // allow to call on specified vehicle by vin number
+    if (vehicleId) {
+      console.log("Found vehicleId in request, reset vehicle to target");
+      req.vehicle = client.getVehicle(vehicleId);
+    } 
+
+    return next();
+  }
+  
+  console.log("Creating a new vehicle instance");
+  client = new BlueLinky(bluelinkyConfig);
+
+  client.on("ready", () => {
+    // by default we use the vin from the config (most cases people only have one car)    
+    req.vehicle = client.getVehicle(bluelinkyConfig.vin);
     return next();
   });
 };
 
 app.use(middleWare);
 
-app.post('/start', async (req, res) => {
+app.post("/start", async (req, res) => {
   let response;
+
+  const {
+    airCtrl = true,
+    igniOnDuration = 10,
+    airTempvalue = 70,
+    defrost = false,
+    heating1 = false,
+  } = req.body;
+
   try {
-    response = await vehicle.start({
-      airCtrl: true,
-      igniOnDuration: 10,
-      airTempvalue: 60
+    response = await req.vehicle.start({
+      airCtrl,
+      igniOnDuration,
+      airTempvalue,
+      defrost,
+      heating1,
     });
   } catch (e) {
     response = {
-      error: e.message
+      error: e.message,
     };
   }
   res.send(response);
 });
 
-app.post('/lock', async (req, res) => {
+app.post("/lock", async (req, res) => {
   let response;
   try {
-    response = await vehicle.lock();
+    response = await req.vehicle.lock();
   } catch (e) {
     console.log(e);
     response = {
-      error: e.message
+      error: e.message,
     };
   }
   res.send(response);
 });
 
-app.get('/', async (req, res) => {
+app.get("/", async (req, res) => {
   let response;
   try {
-    response = await vehicle.status();
+    response = await req.vehicle.status();
   } catch (e) {
     console.log(e);
     response = {
-      error: e.message
+      error: e.message,
     };
   }
   res.send(response);
 });
 
-app.listen(8080, '0.0.0.0');
+app.listen(8080, "0.0.0.0");

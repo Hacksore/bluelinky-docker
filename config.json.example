@@ -1,8 +1,7 @@
 {
-    "validation_key": "",
     "username": "",
     "password": "",
     "pin": "",
-    "region": "",
-    "deviceUuid": ""
+    "vin": "",
+    "region": ""
   }
