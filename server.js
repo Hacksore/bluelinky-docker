@@ -3,6 +3,7 @@ const BlueLinky = require("bluelinky");
 const bodyParser = require("body-parser");
 const basicAuth = require("express-basic-auth");
 const isDocker = require('is-docker');
+
 // configs
 
 const configPath = isDocker() ? "/config" : ".";
@@ -31,16 +32,21 @@ const middleWare = async (req, _, next) => {
     if (vehicleId) {
       console.log("Found vehicleId in request, reset vehicle to target");
       req.vehicle = client.getVehicle(vehicleId);
-    } 
+    }
+
+    // req.vehicle is unset after 2nd request
+    if (typeof vehicleId === "undefined") {
+      req.vehicle = client.getVehicle(bluelinkyConfig.vin);
+    }
 
     return next();
   }
-  
+
   console.log("Creating a new vehicle instance");
   client = new BlueLinky(bluelinkyConfig);
 
   client.on("ready", () => {
-    // by default we use the vin from the config (most cases people only have one car)    
+    // by default we use the vin from the config (most cases people only have one car)
     req.vehicle = client.getVehicle(bluelinkyConfig.vin);
     return next();
   });
@@ -79,6 +85,91 @@ app.post("/lock", async (req, res) => {
   let response;
   try {
     response = await req.vehicle.lock();
+  } catch (e) {
+    console.log(e);
+    response = {
+      error: e.message,
+    };
+  }
+  res.send(response);
+});
+
+app.get("/odometer", async (req, res) => {
+  let response;
+  try {
+    response = await req.vehicle.odometer();
+  } catch (e) {
+    console.log(e);
+    response = {
+      error: e.message,
+    };
+  }
+  res.send(response);
+});
+
+app.get("/full-status", async (req, res) => {
+  let response;
+  try {
+    response = await req.vehicle.fullStatus();
+  } catch (e) {
+    console.log(e);
+    response = {
+      error: e.message,
+    };
+  }
+  res.send(response);
+});
+
+app.get("/report-monthly", async (req, res) => {
+  let response;
+
+  let year = typeof req.query.year === "undefined" ? new Date().getFullYear() : req.query.year;
+  let month = typeof req.query.month === "undefined" ? (new Date().getMonth() + 1) : req.query.month;
+
+  try {
+    response = await req.vehicle.monthlyReport({year: parseInt(year), month: parseInt(month)});
+  } catch (e) {
+    console.log(e);
+    response = {
+      error: e.message,
+    };
+  }
+  res.send(response);
+});
+
+app.get("/report-trip", async (req, res) => {
+  let response;
+
+  let year = typeof req.query.year === "undefined" ? new Date().getFullYear() : req.query.year;
+  let month = typeof req.query.month === "undefined" ? (new Date().getMonth() + 1) : req.query.month;
+
+  try {
+    response = await req.vehicle.tripInfo({year: parseInt(year), month: parseInt(month)});
+  } catch (e) {
+    console.log(e);
+    response = {
+      error: e.message,
+    };
+  }
+  res.send(response);
+});
+app.get("/report-history", async (req, res) => {
+  let response;
+
+  let period;
+  switch (req.query.period) {
+    case 'month':
+      period = 1;
+      break;
+    case 'all':
+      period = 2;
+      break;
+    default:
+      period = 0;
+  }
+
+  try {
+    response = await req.vehicle.driveHistory(period);
   } catch (e) {
     console.log(e);
     response = {
